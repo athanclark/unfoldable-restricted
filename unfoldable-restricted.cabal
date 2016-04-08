@@ -13,11 +13,13 @@ Library
   HS-Source-Dirs:       src
   GHC-Options:          -Wall
   Exposed-Modules:      Data.Unfoldable.Restricted
-  Other-Modules:        Data.Unfoldable.Restricted.Internal
   Build-Depends:        base >= 4.8 && < 5
                       , constraints
+                      , containers
+                      , hashable
                       , unfoldable
                       , unit-constraint
+                      , unordered-containers
 
 Source-Repository head
   Type:                 git
