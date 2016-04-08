@@ -17,6 +17,7 @@ Library
                       , constraints
                       , containers
                       , hashable
+                      , transformers
                       , unfoldable
                       , unit-constraint
                       , unordered-containers
