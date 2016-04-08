@@ -125,7 +125,7 @@ instance BiUnfoldableR (Ord) Unit Map.Map where
     ]
 
 
--- Unordered Containers
+-- * Utils
 
 
 class (Hashable a, Eq a) => Hashable' a
