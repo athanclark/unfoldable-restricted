@@ -9,7 +9,7 @@
 
 module Data.Unfoldable.Restricted where
 
-import Data.Unfolder        (Unfolder (choose), ala, bfs)
+import Data.Unfolder
 import Data.Constraint      (Constraint)
 import Data.Constraint.Unit (Unit)
 
@@ -44,11 +44,32 @@ unfoldRestrictBF_ = bfs unfoldRestrict_
 unfoldrRestrict :: (UnfoldableR p t, p a) => (b -> Maybe (a, b)) -> b -> Maybe (t a)
 unfoldrRestrict f z = terminate . flip runStateT z . unfoldRestrictBF . StateT $ maybeToList . f
   where
-    terminate [] = Nothing
+    terminate []          = Nothing
     terminate ((t, b):ts) = if isNothing (f b) then Just t else terminate ts
 
+fromList :: (UnfoldableR p t, p a) => [a] -> Maybe (t a)
+fromList = unfoldrRestrict uncons
+  where
+    uncons []     = Nothing
+    uncons (a:as) = Just (a, as)
+
+leftMost :: (UnfoldableR Unit t) => Maybe (t ())
+leftMost = unfoldRestrict_
+
+rightMost :: (UnfoldableR Unit t) => Maybe (t ())
+rightMost = getDualA unfoldRestrict_
+
+allDepthFirst :: (UnfoldableR Unit t) => [t ()]
+allDepthFirst = unfoldRestrict_
+
+allToDepth :: (UnfoldableR Unit t) => Int -> [t ()]
+allToDepth d = limitDepth d unfoldRestrict_
+
+allBreadthFirst :: (UnfoldableR Unit t) => [t ()]
+allBreadthFirst = unfoldRestrictBF_
 
 
+-- * BiUnfoldable
 
 class BiUnfoldableR
         (predA :: * -> Constraint)
@@ -57,6 +78,35 @@ class BiUnfoldableR
       | t -> predA predB where
   biunfoldRestrict :: (predA a, predB b, Unfolder f) => f a -> f b -> f (t a b)
 
+biunfoldRestrict_ :: (BiUnfoldableR Unit Unit t, Unfolder f) => f (t () ())
+biunfoldRestrict_ = biunfoldRestrict (pure ()) (pure ())
+
+biunfoldRestrictBF :: (BiUnfoldableR p q t, Unfolder f, p a, q b) => f a -> f b -> f (t a b)
+biunfoldRestrictBF = ala2 bfs biunfoldRestrict
+
+biunfoldRestrictBF_ :: (BiUnfoldableR Unit Unit t, Unfolder f) => f (t () ())
+biunfoldRestrictBF_ = bfs biunfoldRestrict_
+
+biunfoldrRestrict :: ( BiUnfoldableR p q t
+                     , p a
+                     , q b
+                     ) => (c -> Maybe (a, c))
+                       -> (c -> Maybe (b, c))
+                       -> c -> Maybe (t a b)
+biunfoldrRestrict fa fb z = terminate . flip runStateT z $
+  biunfoldRestrictBF (StateT $ maybeToList . fa) (StateT $ maybeToList . fb)
+  where
+    terminate []          = Nothing
+    terminate ((t, c):ts) = if isNothing (fa c) && isNothing (fb c)
+                            then Just t else terminate ts
+
+fromLists :: (BiUnfoldableR p q t, p a, q b) => [a] -> [b] -> Maybe (t a b)
+fromLists = curry $ biunfoldrRestrict unconsA unconsB
+  where
+    unconsA ([],_)     = Nothing
+    unconsA (a:as, bs) = Just (a, (as, bs))
+    unconsB (_,[])     = Nothing
+    unconsB (as, b:bs) = Just (b, (as, bs))
 
 -- Containers
 
