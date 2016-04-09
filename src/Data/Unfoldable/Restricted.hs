@@ -75,25 +75,25 @@ allBreadthFirst :: (UnfoldableR Unit t) => [t ()]
 allBreadthFirst = unfoldRestrictBF_
 
 
--- * BiUnfoldable
+-- * Biunfoldable
 
-class BiUnfoldableR
+class BiunfoldableR
         (predA :: * -> Constraint)
         (predB :: * -> Constraint)
         (t :: * -> * -> *)
       | t -> predA predB where
   biunfoldRestrict :: (predA a, predB b, Unfolder f) => f a -> f b -> f (t a b)
 
-biunfoldRestrict_ :: (BiUnfoldableR Unit Unit t, Unfolder f) => f (t () ())
+biunfoldRestrict_ :: (BiunfoldableR Unit Unit t, Unfolder f) => f (t () ())
 biunfoldRestrict_ = biunfoldRestrict (pure ()) (pure ())
 
-biunfoldRestrictBF :: (BiUnfoldableR p q t, Unfolder f, p a, q b) => f a -> f b -> f (t a b)
+biunfoldRestrictBF :: (BiunfoldableR p q t, Unfolder f, p a, q b) => f a -> f b -> f (t a b)
 biunfoldRestrictBF = ala2 bfs biunfoldRestrict
 
-biunfoldRestrictBF_ :: (BiUnfoldableR Unit Unit t, Unfolder f) => f (t () ())
+biunfoldRestrictBF_ :: (BiunfoldableR Unit Unit t, Unfolder f) => f (t () ())
 biunfoldRestrictBF_ = bfs biunfoldRestrict_
 
-biunfoldrRestrict :: ( BiUnfoldableR p q t
+biunfoldrRestrict :: ( BiunfoldableR p q t
                      , p a
                      , q b
                      ) => (c -> Maybe (a, c))
@@ -106,7 +106,7 @@ biunfoldrRestrict fa fb z = terminate . flip runStateT z $
     terminate ((t, c):ts) = if isNothing (fa c) && isNothing (fb c)
                             then Just t else terminate ts
 
-fromLists :: (BiUnfoldableR p q t, p a, q b) => [a] -> [b] -> Maybe (t a b)
+fromLists :: (BiunfoldableR p q t, p a, q b) => [a] -> [b] -> Maybe (t a b)
 fromLists = curry $ biunfoldrRestrict unconsA unconsB
   where
     unconsA ([],_)     = Nothing
@@ -123,7 +123,7 @@ instance UnfoldableR (Ord) Set.Set where
     , Set.union <$> unfoldRestrict fa <*> unfoldRestrict fa
     ]
 
-instance BiUnfoldableR (Ord) Unit Map.Map where
+instance BiunfoldableR (Ord) Unit Map.Map where
   biunfoldRestrict fa fb = choose
     [ pure Map.empty
     , Map.singleton <$> fa <*> fb
@@ -143,7 +143,7 @@ instance UnfoldableR (Hashable') HashSet.HashSet where
     , HashSet.union <$> unfoldRestrict fa <*> unfoldRestrict fa
     ]
 
-instance BiUnfoldableR (Hashable') (Unit) HashMap.HashMap where
+instance BiunfoldableR (Hashable') (Unit) HashMap.HashMap where
   biunfoldRestrict fa fb = choose
     [ pure HashMap.empty
     , HashMap.singleton <$> fa <*> fb
@@ -212,18 +212,18 @@ instance UnfoldableR p f => UnfoldableR p (Reverse f) where
     ]
 
 
-instance BiUnfoldableR Unit Unit Either where
+instance BiunfoldableR Unit Unit Either where
   biunfoldRestrict fa fb = choose
     [ Left <$> fa
     , Right <$> fb
     ]
 
-instance BiUnfoldableR Unit Unit (,) where
+instance BiunfoldableR Unit Unit (,) where
   biunfoldRestrict fa fb = choose
     [ (,) <$> fa <*> fb
     ]
 
-instance BiUnfoldableR Unit Unit Constant where
+instance BiunfoldableR Unit Unit Constant where
   biunfoldRestrict fa _ = choose
     [ Constant <$> fa
     ]
