@@ -5,6 +5,7 @@
   , FunctionalDependencies
   , FlexibleInstances
   , FlexibleContexts
+  , UndecidableInstances
   #-}
 
 module Data.Unfoldable.Restricted where
@@ -21,6 +22,11 @@ import qualified Data.HashSet      as HashSet
 import           Data.Hashable (Hashable)
 
 import           Data.Maybe (maybeToList, isNothing)
+import           Data.Functor.Identity
+import           Data.Functor.Constant
+import           Data.Functor.Product
+import           Data.Functor.Sum
+import           Data.Functor.Reverse
 import           Control.Monad.Trans.State
 
 
@@ -142,4 +148,82 @@ instance BiUnfoldableR (Hashable') (Unit) HashMap.HashMap where
     [ pure HashMap.empty
     , HashMap.singleton <$> fa <*> fb
     , HashMap.union <$> biunfoldRestrict fa fb <*> biunfoldRestrict fa fb
+    ]
+
+-- Orig
+
+instance UnfoldableR Unit [] where
+  unfoldRestrict fa = choose
+    [ pure []
+    , (:) <$> fa <*> unfoldRestrict fa
+    ]
+
+instance UnfoldableR Unit Maybe where
+  unfoldRestrict fa = choose
+    [ pure Nothing
+    , Just <$> fa
+    ]
+
+instance ( Bounded a
+         , Enum a
+         ) => UnfoldableR Unit (Either a) where
+  unfoldRestrict fa = choose
+    [ Left <$> boundedEnum
+    , Right <$> fa
+    ]
+
+instance ( Bounded a
+         , Enum a
+         ) => UnfoldableR Unit ((,) a) where
+  unfoldRestrict fa = choose
+    [ (,) <$> boundedEnum <*> fa
+    ]
+
+instance UnfoldableR Unit Identity where
+  unfoldRestrict fa = choose
+    [ Identity <$> fa
+    ]
+
+instance ( Bounded a
+         , Enum a
+         ) => UnfoldableR Unit (Constant a) where
+  unfoldRestrict _ = choose
+    [ Constant <$> boundedEnum
+    ]
+
+instance ( UnfoldableR p f
+         , UnfoldableR p g
+         ) => UnfoldableR p (Product f g) where
+  unfoldRestrict fa = choose
+    [ Pair <$> unfoldRestrict fa <*> unfoldRestrict fa
+    ]
+
+instance ( UnfoldableR p f
+         , UnfoldableR p g
+         ) => UnfoldableR p (Sum f g) where
+  unfoldRestrict fa = choose
+    [ InL <$> unfoldRestrict fa
+    , InR <$> unfoldRestrict fa
+    ]
+
+instance UnfoldableR p f => UnfoldableR p (Reverse f) where
+  unfoldRestrict fa = choose
+    [ Reverse <$> getDualA (unfoldRestrict (DualA fa))
+    ]
+
+
+instance BiUnfoldableR Unit Unit Either where
+  biunfoldRestrict fa fb = choose
+    [ Left <$> fa
+    , Right <$> fb
+    ]
+
+instance BiUnfoldableR Unit Unit (,) where
+  biunfoldRestrict fa fb = choose
+    [ (,) <$> fa <*> fb
+    ]
+
+instance BiUnfoldableR Unit Unit Constant where
+  biunfoldRestrict fa _ = choose
+    [ Constant <$> fa
     ]
