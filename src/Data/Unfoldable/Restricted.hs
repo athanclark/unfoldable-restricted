@@ -136,6 +136,9 @@ instance BiunfoldableR (Ord) Unit Map.Map where
 
 class (Hashable a, Eq a) => Hashable' a
 
+instance (Hashable a, Eq a) => Hashable' a
+
+
 instance UnfoldableR (Hashable') HashSet.HashSet where
   unfoldRestrict fa = choose
     [ pure HashSet.empty
